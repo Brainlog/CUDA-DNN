@@ -1,12 +1,15 @@
 #include <iostream>
 #include <vector>
 #include <cmath>
-
+#include <bits/stdc++.h>
 using namespace std;
 
+
+
 // Function to perform convolution with padding
+
 vector<vector<float>> convolveWithPadding(float** input, float** kernel, int inputSize, int kernelSize) {
-    int paddingSize = kernelSize / 2;
+    int paddingSize = kernelSize / 2;  
     vector<vector<float>> output(inputSize, vector<float>(inputSize, 0.0f));
     float** paddedInput = new float*[inputSize + 2 * paddingSize];
 
