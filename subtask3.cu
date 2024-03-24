@@ -14,7 +14,6 @@ void softmax(float * vector, float * final_vector,int size)
 // ? check bias
 __global__ void conv_kernel_p1(float *inp, float *out, int insize, float *kernel, int ksize, int inchannels, int kchannels, float *bias)
 {
-    int outchannels = inchannels * kchannels;
     int inchannel = blockIdx.x;
     int kchannel = blockIdx.y;
     int outchannel = kchannel * inchannels + inchannel;
@@ -45,7 +44,7 @@ __global__ void conv_kernel_p2(float *inp, float *out, int kchannels, int inchan
         for (int i = 0; i < inchannels; i++)
         {
             int currchannel = inchannels * kchannel + i;
-            out[kchannel * insize * insize + row * insize + col] += inp[i * insize * insize + row * insize + col];
+            out[kchannel * insize * insize + row * insize + col] += inp[currchannel * insize * insize + row * insize + col];
         }
     }
 }
@@ -201,7 +200,8 @@ int main()
 
     // Device memory allocation for input and output
     int batch = 1;
-    for (int i = 0; i < batch; i++)
+    int start = 2;
+    for (int i = start; i < start+batch; i++)
     {
         float *d_inp;
         float *inp = new float[28 * 28];
@@ -279,7 +279,7 @@ int main()
         conv_kernel_p1<<<blocks5, threads5>>>(d_out4, d_out5_p1, insize, d_conv3_kernel, ksize, inchannels, kchannels, d_conv3_bias);
 
         // FC2
-        int insize = 500;
+        insize = 500;
         int outsize = 10;
         dim3 threads6(10);
         fc_kernel<<<1, threads6>>>(d_out5_p2, d_out6, d_fc2_weight, d_fc2_bias, insize, outsize);
@@ -298,6 +298,10 @@ int main()
             }
         }
         cout << "Predicted : " << max_index << " Actual : " << label[i] << endl;
+        cout << "Probability vector : \n";
+        for(int i = 0; i < 10; i++){
+            cout << final_out[i] << " ";
+        }
 
 
 
