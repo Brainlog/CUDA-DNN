@@ -16,11 +16,11 @@ void softmax(float *vector, float *final_vector, int size)
     for (int i = 0; i < size; i++)
         denom += exp(vector[i]);
     for (int i = 0; i < size; i++)
-        final_vector[i] = exp(vector[i])/denom;
+        final_vector[i] = exp(vector[i]) / denom;
 }
 
 // ? check bias
-__global__ void conv_kernel_p1(float *inp, float *out, int insize, float *kernel, int ksize, int inchannels, int kchannels, float* bias, int flag)
+__global__ void conv_kernel_p1(float *inp, float *out, int insize, float *kernel, int ksize, int inchannels, int kchannels, float *bias, int flag)
 {
     int inchannel = blockIdx.x;
     int kchannel = blockIdx.y;
@@ -38,14 +38,14 @@ __global__ void conv_kernel_p1(float *inp, float *out, int insize, float *kernel
                 sum += inp[inchannel * insize * insize + (row + i) * insize + col + j] * kernel[outchannel * ksize * ksize + i * ksize + j];
             }
         }
-        if(flag == 0)
-        out[outchannel * outsize * outsize + row * outsize + col] = sum;
+        if (flag == 0)
+            out[outchannel * outsize * outsize + row * outsize + col] = sum;
         else
-        out[outchannel * outsize * outsize + row * outsize + col] = sum + bias[outchannel];
+            out[outchannel * outsize * outsize + row * outsize + col] = sum + bias[outchannel];
     }
 }
 
-__global__ void conv_kernel_p2(float *inp, float *out, int kchannels, int inchannels, int insize, float* bias)
+__global__ void conv_kernel_p2(float *inp, float *out, int kchannels, int inchannels, int insize, float *bias)
 {
     int kchannel = blockIdx.x;
     int row = threadIdx.x;
@@ -97,6 +97,8 @@ __global__ void fc_kernel(float *inp, float *out, float *weight, float *bias, in
     out[row] = sum + bias[row];
 }
 
+
+// IF need use CudaDeviceSync
 int main()
 {
     // File extraction
@@ -214,35 +216,35 @@ int main()
     cudaMemcpy(d_fc2_bias, fc2_bias, 10 * sizeof(float), cudaMemcpyHostToDevice);
 
     // Device memory allocation for input and output
-    int batch = 1;
+    int batch = 10000;
     int start = 0;
     int count = 0;
-    // count time 
+    float *inp = new float[28 * 28];
+    float *d_inp;
+    cudaMalloc(&d_inp, 28 * 28 * sizeof(float));
+    float *d_out1_p1;
+    float *d_out2;
+    float *d_out3_p1;
+    float *d_out3_p2;
+    float *d_out4;
+    float *d_out5_p1;
+    float *d_out5_p2;
+    float *d_out6;
+    cudaMalloc(&d_out1_p1, 20 * 24 * 24 * sizeof(float));
+    cudaMalloc(&d_out2, 20 * 12 * 12 * sizeof(float));
+    cudaMalloc(&d_out3_p1, 20 * 50 * 8 * 8 * sizeof(float));
+    cudaMalloc(&d_out3_p2, 50 * 8 * 8 * sizeof(float));
+    cudaMalloc(&d_out4, 50 * 4 * 4 * sizeof(float));
+    cudaMalloc(&d_out5_p1, 50 * 500 * sizeof(float));
+    cudaMalloc(&d_out5_p2, 500 * sizeof(float));
+    cudaMalloc(&d_out6, 10 * sizeof(float));
+    // count time
     auto str = std::chrono::high_resolution_clock::now();
-    for (int l = start; l < start + batch; l++)
+    for (int i = start; i < start + batch; i++)
     {
-        int i = l;
-        float *inp = new float[28 * 28];
-        float *d_inp;
-        cudaMalloc(&d_inp, 28 * 28 * sizeof(float));
-        float *d_out1_p1;
-        float *d_out2;
-        float *d_out3_p1;
-        float *d_out3_p2;
-        float *d_out4;
-        float *d_out5_p1;
-        float *d_out5_p2;
-        float *d_out6;
         // Dimensions of all outputs :
         // Conv1 : 20x24x24, Pool1 : 20x12x12, Conv2 : 50x8x8, Pool2 : 50x4x4, Conv3 : 500, FC2 : 10
-        cudaMalloc(&d_out1_p1, 20 * 24 * 24 * sizeof(float));
-        cudaMalloc(&d_out2, 20 * 12 * 12 * sizeof(float));
-        cudaMalloc(&d_out3_p1, 20 * 50 * 8 * 8 * sizeof(float));
-        cudaMalloc(&d_out3_p2, 50 * 8 * 8 * sizeof(float));
-        cudaMalloc(&d_out4, 50 * 4 * 4 * sizeof(float));
-        cudaMalloc(&d_out5_p1, 50 * 500 * sizeof(float));
-        cudaMalloc(&d_out5_p2, 500 * sizeof(float));
-        cudaMalloc(&d_out6, 10 * sizeof(float));
+
         for (int j = 0; j < 28 * 28; j++)
         {
             inp[j] = inpu[i * 28 * 28 + j];
@@ -259,9 +261,6 @@ int main()
         dim3 blocks1(1, 20);
         int flag = 1;
         conv_kernel_p1<<<blocks1, threads1>>>(d_inp, d_out1_p1, insize, d_conv1_kernel, ksize, inchannels, kchannels, d_conv1_bias, flag);
-        cudaDeviceSynchronize();
-        // cudaError_t cudaError = cudaGetLastError();
-        // cout << "CUDA error: " << cudaGetErrorString(cudaError) << endl;
 
         // Pool1
         ksize = 2;
@@ -271,9 +270,7 @@ int main()
         dim3 threads2(24, 24);
         dim3 blocks2(20);
         maxpool_kernel<<<blocks2, threads2>>>(d_out1_p1, d_out2, insize, ksize, stride, inchannels);
-        cudaDeviceSynchronize();
-        // cudaError = cudaGetLastError();
-        // cout << "CUDA error: " << cudaGetErrorString(cudaError) << endl;
+
 
         // Conv2
         ksize = 5;
@@ -282,23 +279,10 @@ int main()
         kchannels = 50;
         dim3 threads3(8, 8);
         dim3 blocks3(20, 50);
-        conv_kernel_p1<<<blocks3, threads3>>>(d_out2, d_out3_p1, insize, d_conv2_kernel, ksize, inchannels, kchannels,d_conv2_bias, 0);
-        cudaDeviceSynchronize();
-        // cudaError = cudaGetLastError();
-        // cout << "CUDA error: " << cudaGetErrorString(cudaError) << endl;
+        conv_kernel_p1<<<blocks3, threads3>>>(d_out2, d_out3_p1, insize, d_conv2_kernel, ksize, inchannels, kchannels, d_conv2_bias, 0);
 
-        // float* debug = new float[1400];
-        // cudaMemcpy(debug, d_out3_p1, 1400* sizeof(float), cudaMemcpyDeviceToHost);
-        // for(int i = 1000; i < 1040; i++)
-        // {
-        //     cout << debug[i] << " ";
-        // }
-        // cout << "\n";
+        conv_kernel_p2<<<50, threads3>>>(d_out3_p1, d_out3_p2, kchannels, inchannels, insize - ksize + 1, d_conv2_bias);
 
-        conv_kernel_p2<<<50, threads3>>>(d_out3_p1, d_out3_p2, kchannels, inchannels, insize-ksize+1, d_conv2_bias);
-        cudaDeviceSynchronize();
-        // cudaError = cudaGetLastError();
-        // cout << "CUDA error: " << cudaGetErrorString(cudaError) << endl;
 
         // Pool2
         ksize = 2;
@@ -308,10 +292,8 @@ int main()
         dim3 threads4(8, 8);
         dim3 blocks4(50);
         maxpool_kernel<<<blocks4, threads4>>>(d_out3_p2, d_out4, insize, ksize, stride, inchannels);
-        cudaDeviceSynchronize();
-        // cudaError = cudaGetLastError();
-        // cout << "CUDA error: " << cudaGetErrorString(cudaError) << endl;
-
+        cudaMemset(d_out3_p2, 0, 50 * 8 * 8 * sizeof(float));
+  
 
         // Conv3
         ksize = 4;
@@ -321,13 +303,7 @@ int main()
         dim3 threads5(1, 1);
         dim3 blocks5(50, 500);
         conv_kernel_p1<<<blocks5, threads5>>>(d_out4, d_out5_p1, insize, d_conv3_kernel, ksize, inchannels, kchannels, d_conv3_bias, 0);
-        cudaDeviceSynchronize();
-        // cudaError = cudaGetLastError();
-        // cout << "CUDA error: " << cudaGetErrorString(cudaError) << endl;
-        conv_kernel_p2<<<500, threads5>>>(d_out5_p1, d_out5_p2, kchannels, inchannels, insize-ksize+1, d_conv3_bias);
-        cudaDeviceSynchronize();
-        // cudaError = cudaGetLastError();
-        // cout << "CUDA error: " << cudaGetErrorString(cudaError) << endl;
+        conv_kernel_p2<<<500, threads5>>>(d_out5_p1, d_out5_p2, kchannels, inchannels, insize - ksize + 1, d_conv3_bias);
 
 
         // FC2
@@ -335,16 +311,13 @@ int main()
         int outsize = 10;
         dim3 threads6(10);
         fc_kernel<<<1, threads6>>>(d_out5_p2, d_out6, d_fc2_weight, d_fc2_bias, insize, outsize);
-        cudaDeviceSynchronize();
-        // cudaError = cudaGetLastError();
-        // cout << "CUDA error: " << cudaGetErrorString(cudaError) << endl;
+        cudaMemset(d_out5_p2, 0, 500 * sizeof(float));
+        
 
         // Probabilities
         float *out6 = new float[10];
         cudaMemcpy(out6, d_out6, 10 * sizeof(float), cudaMemcpyDeviceToHost);
-        cudaDeviceSynchronize();
-        // cudaError = cudaGetLastError();
-        // cout << "CUDA error: " << cudaGetErrorString(cudaError) << endl;
+
         float *final_out = new float[10];
         softmax(out6, final_out, 10);
         int max_index = 0;
@@ -355,27 +328,12 @@ int main()
                 max_index = j;
             }
         }
-        // cout << "Predicted : " << max_index << " Actual : " << label[i] << endl;
-        // cout << "Probability : ";
-        // for (int j = 0; j < 10; j++)
-        // {
-        //     cout << out6[j] << " ";
-        // }
-        // cout << "\n";
+
         if (label[i] == max_index)
         {
             count++;
         }
-        cudaFree(d_inp);
-        cudaFree(d_out1_p1);
-        cudaFree(d_out2);
-        cudaFree(d_out3_p1);
-        cudaFree(d_out3_p2);
-        cudaFree(d_out4);
-        cudaFree(d_out5_p1);
-        cudaFree(d_out5_p2);
-        cudaFree(d_out6);
-        cudaDeviceSynchronize();
+
     }
 
     auto end = std::chrono::high_resolution_clock::now();
@@ -383,6 +341,15 @@ int main()
     std::cout << "Total Time : " << duration.count() << "\n";
     std::cout << "Accuracy : " << count << " / " << batch << endl;
 
+    cudaFree(d_inp);
+    cudaFree(d_out1_p1);
+    cudaFree(d_out2);
+    cudaFree(d_out3_p1);
+    cudaFree(d_out3_p2);
+    cudaFree(d_out4);
+    cudaFree(d_out5_p1);
+    cudaFree(d_out5_p2);
+    cudaFree(d_out6);
 
     // Free the memory of weights
     cudaFree(d_conv1_kernel);
