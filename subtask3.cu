@@ -160,17 +160,16 @@ int main()
     dataset.open("./test_dataset.txt");
     ifstream labels;
     labels.open("./test_labels.txt");
-    float *inp = new float[10000 * 28 * 28];
+    float *inpu = new float[10000 * 28 * 28];
     int *label = new int[10000];
     for (int i = 0; i < 10000; i++)
     {
         labels >> label[i];
         for (int j = 0; j < 28 * 28; j++)
         {
-            dataset >> inp[i * 28 * 28 + j];
+            dataset >> inpu[i * 28 * 28 + j];
         }
     }
-
     // Device memory allocation for weights and biases
     float *d_conv1_kernel;
     float *d_conv1_bias;
@@ -207,7 +206,7 @@ int main()
         float *inp = new float[28 * 28];
         for (int j = 0; j < 28 * 28; j++)
         {
-            inp[j] = inp[i * 28 * 28 + j];
+            inp[j] = inpu[i * 28 * 28 + j];
         }
         cudaMalloc(&d_inp, 28 * 28 * sizeof(float));
         cudaMemcpy(d_inp, inp, 28 * 28 * sizeof(float), cudaMemcpyHostToDevice);
@@ -328,7 +327,7 @@ int main()
     cudaFree(d_fc2_bias);
 
     // Free host memory
-    delete[] inp;
+    delete[] inpu;
     delete[] label;
     delete[] conv1_kernel;
     delete[] conv1_bias;
