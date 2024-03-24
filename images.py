@@ -10,7 +10,7 @@ for i in range(len(images)):
     images[i] = images[i][:-4]
     imgarray = cv2.imread(imgpath, cv2.IMREAD_GRAYSCALE)
     imgarray = cv2.resize(imgarray, (28, 28))
-    imgarray = imgarray
+    imgarray = imgarray/255.0
     test_dataset.append(imgarray)
     imglabel = int(images[i].split('-')[1][-1])
     labels.append(imglabel)
