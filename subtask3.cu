@@ -19,11 +19,10 @@ void softmax(float *vector, float *final_vector, int size)
         final_vector[i] = exp(vector[i]) / denom;
 }
 
-// ? check bias
 __global__ void conv_kernel_p1(float *inp, float *out, int insize, float *kernel, int ksize, int inchannels, int kchannels, float *bias, int flag)
 {
-    int inchannel = blockIdx.x;
-    int kchannel = blockIdx.y;
+    int inchannel = blockIdx.y;
+    int kchannel = blockIdx.x;
     int outchannel = (kchannel)*inchannels + inchannel;
     int row = threadIdx.x;
     int col = threadIdx.y;
@@ -39,7 +38,7 @@ __global__ void conv_kernel_p1(float *inp, float *out, int insize, float *kernel
             }
         }
         if (flag == 0)
-            out[outchannel * outsize * outsize + row * outsize + col] = sum;
+            out[outchannel  + (row * outsize + col)*(kchannels*inchannels)] = sum;
         else
             out[outchannel * outsize * outsize + row * outsize + col] = sum + bias[outchannel];
     }
@@ -56,7 +55,7 @@ __global__ void conv_kernel_p2(float *inp, float *out, int kchannels, int inchan
         for (int i = 0; i < inchannels; i++)
         {
             int currchannel = inchannels * kchannel + i;
-            temp += inp[currchannel * insize * insize + row * insize + col];
+            temp += inp[currchannel  + (row * insize + col)*(kchannels*inchannels)];
         }
         out[kchannel * insize * insize + row * insize + col] = temp + bias[kchannel];
     }
@@ -85,7 +84,6 @@ __global__ void maxpool_kernel(float *inp, float *out, int insize, int ksize, in
     }
 }
 
-// Y = W*X + B, need to be optimized
 __global__ void fc_kernel(float *inp, float *out, float *weight, float *bias, int insize, int outsize)
 {
     int row = threadIdx.x;
@@ -97,8 +95,6 @@ __global__ void fc_kernel(float *inp, float *out, float *weight, float *bias, in
     out[row] = sum + bias[row];
 }
 
-
-// IF need use CudaDeviceSync
 int main()
 {
     // File extraction
@@ -238,8 +234,8 @@ int main()
     cudaMalloc(&d_out5_p1, 50 * 500 * sizeof(float));
     cudaMalloc(&d_out5_p2, 500 * sizeof(float));
     cudaMalloc(&d_out6, 10 * sizeof(float));
-    // count time
     auto str = std::chrono::high_resolution_clock::now();
+    // count time
     for (int i = start; i < start + batch; i++)
     {
         // Dimensions of all outputs :
@@ -258,9 +254,9 @@ int main()
         int inchannels = 1;
         int kchannels = 20;
         dim3 threads1(24, 24);
-        dim3 blocks1(1, 20);
+        dim3 blocks1(20,1);
         int flag = 1;
-        conv_kernel_p1<<<blocks1, threads1>>>(d_inp, d_out1_p1, insize, d_conv1_kernel, ksize, inchannels, kchannels, d_conv1_bias, flag);
+        conv_kernel_p1<<<blocks1, threads1>>>(d_inp, d_out1_p1, insize, d_conv1_kernel, ksize, inchannels, kchannels, d_conv1_bias, flag); 
 
         // Pool1
         ksize = 2;
@@ -278,10 +274,10 @@ int main()
         inchannels = 20;
         kchannels = 50;
         dim3 threads3(8, 8);
-        dim3 blocks3(20, 50);
+        dim3 threads3_2(8,8);
+        dim3 blocks3(50,20);
         conv_kernel_p1<<<blocks3, threads3>>>(d_out2, d_out3_p1, insize, d_conv2_kernel, ksize, inchannels, kchannels, d_conv2_bias, 0);
-
-        conv_kernel_p2<<<50, threads3>>>(d_out3_p1, d_out3_p2, kchannels, inchannels, insize - ksize + 1, d_conv2_bias);
+        conv_kernel_p2<<<50, threads3_2>>>(d_out3_p1, d_out3_p2, kchannels, inchannels, insize - ksize + 1, d_conv2_bias);
 
 
         // Pool2
@@ -301,9 +297,10 @@ int main()
         inchannels = 50;
         kchannels = 500;
         dim3 threads5(1, 1);
-        dim3 blocks5(50, 500);
+        dim3 threads5_2(1,1);
+        dim3 blocks5(500, 50);
         conv_kernel_p1<<<blocks5, threads5>>>(d_out4, d_out5_p1, insize, d_conv3_kernel, ksize, inchannels, kchannels, d_conv3_bias, 0);
-        conv_kernel_p2<<<500, threads5>>>(d_out5_p1, d_out5_p2, kchannels, inchannels, insize - ksize + 1, d_conv3_bias);
+        conv_kernel_p2<<<500, threads5_2>>>(d_out5_p1, d_out5_p2, kchannels, inchannels, insize - ksize + 1, d_conv3_bias);
 
 
         // FC2
@@ -312,8 +309,6 @@ int main()
         dim3 threads6(10);
         fc_kernel<<<1, threads6>>>(d_out5_p2, d_out6, d_fc2_weight, d_fc2_bias, insize, outsize);
         cudaMemset(d_out5_p2, 0, 500 * sizeof(float));
-        
-
         // Probabilities
         float *out6 = new float[10];
         cudaMemcpy(out6, d_out6, 10 * sizeof(float), cudaMemcpyDeviceToHost);
@@ -337,7 +332,7 @@ int main()
     }
 
     auto end = std::chrono::high_resolution_clock::now();
-    std::chrono::microseconds duration = std::chrono::duration_cast<std::chrono::microseconds>(end - str);
+    std::chrono::milliseconds duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - str);
     std::cout << "Total Time : " << duration.count() << "\n";
     std::cout << "Accuracy : " << count << " / " << batch << endl;
 
