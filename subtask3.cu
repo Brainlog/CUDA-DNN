@@ -212,7 +212,7 @@ int main()
     cudaMemcpy(d_fc2_bias, fc2_bias, 10 * sizeof(float), cudaMemcpyHostToDevice);
 
     // Device memory allocation for input and output
-    int batch = 10000;
+    int batch = 1000;
     int start = 0;
     int count = 0;
     float *inp = new float[28 * 28];
