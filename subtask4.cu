@@ -350,6 +350,10 @@ int main()
     std::cout << "Total Time : " << duration.count() << "\n";
     std::cout << "Accuracy : " << count << " / " << batch << endl;
 
+    for(int i =0; i < batch; i++){
+        cudaStreamDestroy(streams[i]);
+    }
+
     cudaFree(d_inp);
     cudaFree(d_out1_p1);
     cudaFree(d_out2);
