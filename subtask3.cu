@@ -28,18 +28,38 @@ __global__ void conv_kernel_p1(float *inp, float *out, int insize, float *kernel
     int col = threadIdx.y;
     int outsize = insize - ksize + 1;
     float sum = 0;
+
+    int shared_input_size = insize * insize;
+    int shared_kernel_size = ksize * ksize;
+
+    __shared__ float shared_inp[shared_input_size];
+    __shared__ float shared_kernel[shared_kernel_size];
+
+    if (inchannel < inchannels && kchannel < kchannels && row < outsize && col < outsize)
+    {
+        for(int i = 0; i < ksize; i++)
+        {
+            for(int j = 0; j < ksize; j++)
+            {
+                shared_kernel[i * ksize + j] = kernel[outchannel * ksize * ksize + i * ksize + j];
+                shared_inp[(row + i) * insize + col + j] = inp[inchannel * insize * insize + (row + i) * insize + col + j];
+            }
+        }
+    }
+
+
     if (inchannel < inchannels && kchannel < kchannels && row < outsize && col < outsize)
     {
         for (int i = 0; i < ksize; i++)
         {
             for (int j = 0; j < ksize; j++)
             {
-                sum += inp[inchannel * insize * insize + (row + i) * insize + col + j] * kernel[outchannel * ksize * ksize + i * ksize + j];
+                sum += shared_inp[(row + i) * insize + col * j] * shared_kernel[i * ksize + j];
             }
         }
-        if (flag == 0)
-            out[outchannel  + (row * outsize + col)*(kchannels*inchannels)] = sum;
-        else
+        if (flag == 0)  // 3D convolution
+            out[outchannel + (row * outsize + col)*(kchannels*inchannels)] = sum;
+        else            // 2D convolution
             out[outchannel * outsize * outsize + row * outsize + col] = sum + bias[outchannel];
     }
 }
