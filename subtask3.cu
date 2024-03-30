@@ -2,6 +2,8 @@
 using namespace std;
 #include <chrono>
 
+#define KERNEL_SIZE 25
+
 void softmax(float *vector, float *final_vector, int size)
 {
     float denom = 0;
@@ -28,13 +30,28 @@ __global__ void conv_kernel_p1(float *inp, float *out, int insize, float *kernel
     int col = threadIdx.y;
     int outsize = insize - ksize + 1;
     float sum = 0;
+
+    __shared__ shared_kernel[KERNEL_SIZE];
+
+    if(row == 0 && col == 0){
+        for(int i = 0; i < ksize; i++)
+        {
+            for(int j = 0; j < ksize; j++)
+            {
+                shared_kernel[i*ksize + j] = kernel[outchannel * ksize * ksize + i * ksize + j];
+            }
+        }
+    }
+
+    __syncthreads();
+
     if (inchannel < inchannels && kchannel < kchannels && row < outsize && col < outsize)
     {
         for (int i = 0; i < ksize; i++)
         {
             for (int j = 0; j < ksize; j++)
             {
-                sum += inp[inchannel * insize * insize + (row + i) * insize + col + j] * kernel[outchannel * ksize * ksize + i * ksize + j];
+                sum += inp[inchannel * insize * insize + (row + i) * insize + col + j] * shared_kernel[i * ksize + j];
             }
         }
         if (flag == 0)
@@ -212,7 +229,7 @@ int main()
     cudaMemcpy(d_fc2_bias, fc2_bias, 10 * sizeof(float), cudaMemcpyHostToDevice);
 
     // Device memory allocation for input and output
-    int batch = 1000;
+    int batch = 10000;
     int start = 0;
     int count = 0;
     float *inp = new float[28 * 28];

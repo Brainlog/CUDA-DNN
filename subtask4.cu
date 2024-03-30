@@ -212,7 +212,7 @@ int main()
     cudaMemcpy(d_fc2_bias, fc2_bias, 10 * sizeof(float), cudaMemcpyHostToDevice);
 
     // Inference details
-    int batch = 1000;
+    int batch = 10000;
     int start = 0;
     int count = 0;
     int ksize1 = 5;
