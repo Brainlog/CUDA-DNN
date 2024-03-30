@@ -31,7 +31,7 @@ __global__ void conv_kernel_p1(float *inp, float *out, int insize, float *kernel
     int outsize = insize - ksize + 1;
     float sum = 0;
 
-    __shared__ shared_kernel[KERNEL_SIZE];
+    __shared__ float shared_kernel[KERNEL_SIZE];
 
     if(row == 0 && col == 0){
         for(int i = 0; i < ksize; i++)
