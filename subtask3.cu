@@ -33,32 +33,55 @@ __global__ void conv_kernel_p1(float *inp, float *out, int insize, float *kernel
 
     __shared__ float shared_kernel[KERNEL_SIZE];
 
-    if(row == 0 && col == 0){
-        for(int i = 0; i < ksize; i++)
+    // if(row == 0 && col == 0){
+    //     for(int i = 0; i < ksize; i++)
+    //     {
+    //         for(int j = 0; j < ksize; j++)
+    //         {
+    //             shared_kernel[i*ksize + j] = kernel[outchannel * ksize * ksize + i * ksize + j];
+    //         }
+    //     }
+    // }
+    if(ksize == 5){
+        if(row < ksize && col < ksize){
+            shared_kernel[row*ksize + col] = kernel[outchannel * ksize * ksize + row * ksize + col];
+        }
+        __syncthreads();
+
+        if (inchannel < inchannels && kchannel < kchannels && row < outsize && col < outsize)
         {
-            for(int j = 0; j < ksize; j++)
+            for (int i = 0; i < ksize; i++)
             {
-                shared_kernel[i*ksize + j] = kernel[outchannel * ksize * ksize + i * ksize + j];
+                for (int j = 0; j < ksize; j++)
+                {
+                    sum += inp[inchannel * insize * insize + (row + i) * insize + col + j] * shared_kernel[i * ksize + j];
+                }
             }
+            if (flag == 0)
+                out[outchannel  + (row * outsize + col)*(kchannels*inchannels)] = sum;
+            else
+                out[outchannel * outsize * outsize + row * outsize + col] = sum + bias[outchannel];
+        }
+    }
+    else{
+        if (inchannel < inchannels && kchannel < kchannels && row < outsize && col < outsize)
+        {
+            for (int i = 0; i < ksize; i++)
+            {
+                for (int j = 0; j < ksize; j++)
+                {
+                    sum += inp[inchannel * insize * insize + (row + i) * insize + col + j] * kernel[outchannel * ksize * ksize + i * ksize + j];
+                }
+            }
+            if (flag == 0)
+                out[outchannel  + (row * outsize + col)*(kchannels*inchannels)] = sum;
+            else
+                out[outchannel * outsize * outsize + row * outsize + col] = sum + bias[outchannel];
         }
     }
 
-    __syncthreads();
 
-    if (inchannel < inchannels && kchannel < kchannels && row < outsize && col < outsize)
-    {
-        for (int i = 0; i < ksize; i++)
-        {
-            for (int j = 0; j < ksize; j++)
-            {
-                sum += inp[inchannel * insize * insize + (row + i) * insize + col + j] * shared_kernel[i * ksize + j];
-            }
-        }
-        if (flag == 0)
-            out[outchannel  + (row * outsize + col)*(kchannels*inchannels)] = sum;
-        else
-            out[outchannel * outsize * outsize + row * outsize + col] = sum + bias[outchannel];
-    }
+
 }
 
 __global__ void conv_kernel_p2(float *inp, float *out, int kchannels, int inchannels, int insize, float *bias)
