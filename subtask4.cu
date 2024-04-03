@@ -68,7 +68,7 @@ __global__ void maxpool_kernel(float *inp, float *out, int insize, int ksize, in
     int row = threadIdx.x;
     int col = threadIdx.y;
     int outchannel = inchannel;
-    float maxval = 0;
+    float maxval = -1000;
     if (inchannel < inchannels && row % stride == 0 && col % stride == 0 && row + ksize - 1 < insize && col + ksize - 1 < insize)
     {
         int newrow = row / stride;
@@ -90,6 +90,7 @@ __global__ void fc_kernel(float *inp, float *out, float *weight, float *bias, in
     float sum = 0;
     for (int i = 0; i < insize; i++)
     {
+        if(inp[i]<0) inp[i] = 0;
         sum += inp[i] * weight[row * insize + i];
     }
     out[row] = sum + bias[row];
