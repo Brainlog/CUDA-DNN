@@ -2,6 +2,8 @@
 using namespace std;
 #include <chrono>
 
+#define SHARED_FC_INPUT_SIZE 500
+
 void softmax(float *vector, float *final_vector, int size)
 {
     float denom = 0;
@@ -88,10 +90,20 @@ __global__ void fc_kernel(float *inp, float *out, float *weight, float *bias, in
 {
     int row = threadIdx.x;
     float sum = 0;
+
+    __shared__ float shared_fc_input[SHARED_FC_INPUT_SIZE];
+
+    for (int i = 0; i < 50; i++){
+        shared_fc_input[row * 50 + i] = inp[row * 50 + i];
+        if(shared_fc_input[row * 50 + i] < 0)
+            shared_fc_input[row * 50 + i] = 0;
+    }
+
+    __syncthreads();
+
     for (int i = 0; i < insize; i++)
     {
-        if(inp[i]<0) inp[i] = 0;
-        sum += inp[i] * weight[row * insize + i];
+        sum += shared_fc_input[i] * weight[row * insize + i];
     }
     out[row] = sum + bias[row];
 }
@@ -213,7 +225,7 @@ int main()
     cudaMemcpy(d_fc2_bias, fc2_bias, 10 * sizeof(float), cudaMemcpyHostToDevice);
 
     // Inference details
-    int batch = 1000;
+    int batch = 10000;
     int start = 0;
     int count = 0;
     int ksize1 = 5;
