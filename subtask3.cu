@@ -52,6 +52,7 @@ __global__ void conv_kernel_p2(float *inp, float *out, int kchannels, int inchan
     int row = threadIdx.x;
     int col = threadIdx.y;
     float temp = 0;
+    
     if (kchannel < kchannels && row < insize && col < insize)
     {
         for (int i = 0; i < inchannels; i++)
@@ -70,7 +71,7 @@ __global__ void maxpool_kernel(float *inp, float *out, int insize, int ksize, in
     int row = threadIdx.x;
     int col = threadIdx.y;
     int outchannel = inchannel;
-    float maxval = 0;
+    float maxval = -1000;
     if (inchannel < inchannels && row % stride == 0 && col % stride == 0 && row + ksize - 1 < insize && col + ksize - 1 < insize)
     {
         int newrow = row / stride;
@@ -94,6 +95,8 @@ __global__ void fc_kernel(float *inp, float *out, float *weight, float *bias, in
 
     for (int i = 0; i < 50; i++){
         shared_fc_input[row * 50 + i] = inp[row * 50 + i];
+        if(shared_fc_input[row * 50 + i] < 0)
+            shared_fc_input[row * 50 + i] = 0;
     }
 
     __syncthreads();
@@ -319,6 +322,7 @@ int main()
         dim3 threads6(10);
         fc_kernel<<<1, threads6>>>(d_out5_p2, d_out6, d_fc2_weight, d_fc2_bias, insize, outsize);
         cudaMemset(d_out5_p2, 0, 500 * sizeof(float));
+
         // Probabilities
         float *out6 = new float[10];
         cudaMemcpy(out6, d_out6, 10 * sizeof(float), cudaMemcpyDeviceToHost);
@@ -338,7 +342,6 @@ int main()
         {
             count++;
         }
-
     }
 
     auto end = std::chrono::high_resolution_clock::now();

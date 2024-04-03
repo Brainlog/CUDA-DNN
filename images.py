@@ -3,9 +3,10 @@ import cv2
 dir = './mnist_test/test'
 images = os.listdir(dir)
 images.sort()
+
 test_dataset = []
 labels = []
-for i in range(len(images)):
+for i in range(10000):
     imgpath = os.path.join(dir, images[i])
     images[i] = images[i][:-4]
     imgarray = cv2.imread(imgpath, cv2.IMREAD_GRAYSCALE)
@@ -27,8 +28,5 @@ with open('test_labels.txt', 'w') as f:
     for i in range(len(labels)):
         f.write(str(labels[i]) + '\n')
 f.close()
-    
-    
-    
     
 
