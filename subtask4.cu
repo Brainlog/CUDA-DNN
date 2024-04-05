@@ -226,7 +226,9 @@ int main()
 
     // Inference details
     int batch = 10000;
-    int start = 0;
+    int num_sub_batches = 100;
+    int sub_batch_size = batch / num_sub_batches;
+
     int count = 0;
     int ksize1 = 5;
     int insize1 = 28;
@@ -271,16 +273,16 @@ int main()
     for(int i = 0; i < batch; i++){
         inp[i] = new float[28 * 28];
     }
-    float **d_inp = new float *[batch];
-    float **d_out1_p1 = new float *[batch];
-    float **d_out2 = new float *[batch];
-    float **d_out3_p1 = new float *[batch];
-    float **d_out3_p2 = new float *[batch];
-    float **d_out4 = new float *[batch];
-    float **d_out5_p1 = new float *[batch];
-    float **d_out5_p2 = new float *[batch];
-    float **d_out6 = new float *[batch];
-    for (int i = 0; i < batch; i++)
+    float **d_inp = new float *[num_sub_batches];
+    float **d_out1_p1 = new float *[num_sub_batches];
+    float **d_out2 = new float *[num_sub_batches];
+    float **d_out3_p1 = new float *[num_sub_batches];
+    float **d_out3_p2 = new float *[num_sub_batches];
+    float **d_out4 = new float *[num_sub_batches];
+    float **d_out5_p1 = new float *[num_sub_batches];
+    float **d_out5_p2 = new float *[num_sub_batches];
+    float **d_out6 = new float *[num_sub_batches];
+    for (int i = 0; i < num_sub_batches; i++)
     {
         cudaMalloc(&d_inp[i], 28 * 28 * sizeof(float));
         cudaMalloc(&d_out1_p1[i], 20 * 24 * 24 * sizeof(float));
@@ -298,64 +300,70 @@ int main()
             inp[i][j] = inpu[i * 28 * 28 + j];
         }
     }
-    for(int i = 0; i < batch; i++){
-        cudaMemcpy(d_inp[i], inp[i], 28 * 28 * sizeof(float), cudaMemcpyHostToDevice);
-    }
-    // count time
+
     auto str = std::chrono::high_resolution_clock::now();
-    cudaStream_t* streams = new cudaStream_t[batch];
-    for(int i = 0; i < batch; i++){
+
+    cudaStream_t* streams = new cudaStream_t[num_sub_batches];
+    for(int i = 0; i < num_sub_batches; i++){
         cudaStreamCreate(&streams[i]);
     }
 
-    // Inference Loop
-    for (int i = start; i < start + batch; i++)
-    {
-        // Dimensions of all outputs :
-        // Conv1 : 20x24x24, Pool1 : 20x12x12, Conv2 : 50x8x8, Pool2 : 50x4x4, Conv3 : 500, FC2 : 10
-        // Perform Inference
-        // Conv1
-        conv_kernel_p1<<<blocks1, threads1, 0, streams[i]>>>(d_inp[i], d_out1_p1[i], insize1, d_conv1_kernel, ksize1, inchannels1, kchannels1, d_conv1_bias, flag1);
+    for(int j = 0; j < sub_batch_size; j++){
+        for(int i = 0; i < num_sub_batches; i++){
+            cudaMemcpyAsync(d_inp[i], inp[j * num_sub_batches + i], 28 * 28 * sizeof(float), cudaMemcpyHostToDevice, streams[i]);
+        }
+        for(int i = 0; i < num_sub_batches; i++){
+            // Dimensions of all outputs :
+            // Conv1 : 20x24x24, Pool1 : 20x12x12, Conv2 : 50x8x8, Pool2 : 50x4x4, Conv3 : 500, FC2 : 10
+            // Perform Inference
+            // Conv1
+            conv_kernel_p1<<<blocks1, threads1, 0, streams[i]>>>(d_inp[i], d_out1_p1[i], insize1, d_conv1_kernel, ksize1, inchannels1, kchannels1, d_conv1_bias, flag1);
+        }
+        for(int i = 0; i < num_sub_batches; i++){
+            maxpool_kernel<<<blocks2, threads2, 0, streams[i]>>>(d_out1_p1[i], d_out2[i], insize2, ksize2, stride2, inchannels2);
+        }
+        for(int i = 0; i < num_sub_batches; i++){
+            conv_kernel_p1<<<blocks3, threads3, 0, streams[i]>>>(d_out2[i], d_out3_p1[i], insize3, d_conv2_kernel, ksize3, inchannels3, kchannels3, d_conv2_bias, 0);
+        }
+        for(int i = 0; i < num_sub_batches; i++){
+            conv_kernel_p2<<<50, threads3_2, 0, streams[i]>>>(d_out3_p1[i], d_out3_p2[i], kchannels3, inchannels3, insize3 - ksize3 + 1, d_conv2_bias);
+        }
+        for (int i = 0; i < num_sub_batches; i++)
+            maxpool_kernel<<<blocks4, threads4, 0 ,streams[i]>>>(d_out3_p2[i], d_out4[i], insize4, ksize4, stride4, inchannels4);
+        for (int i = 0; i < num_sub_batches; i++)
+            conv_kernel_p1<<<blocks5, threads5, 0, streams[i]>>>(d_out4[i], d_out5_p1[i], insize5, d_conv3_kernel, ksize5, inchannels5, kchannels5, d_conv3_bias, 0);
+        for (int i = 0; i < num_sub_batches; i++)
+            conv_kernel_p2<<<500, threads5_2, 0, streams[i]>>>(d_out5_p1[i], d_out5_p2[i], kchannels5, inchannels5, insize5 - ksize5 + 1, d_conv3_bias);
 
-        // Pool1
-        maxpool_kernel<<<blocks2, threads2, 0, streams[i]>>>(d_out1_p1[i], d_out2[i], insize2, ksize2, stride2, inchannels2);
+            // FC2
+        for (int i = 0; i < num_sub_batches; i++)
+            fc_kernel<<<1, threads6, 0, streams[i]>>>(d_out5_p2[i], d_out6[i], d_fc2_weight, d_fc2_bias, insize6, outsize6);
+        cudaDeviceSynchronize();
 
-        // Conv2
-        conv_kernel_p1<<<blocks3, threads3, 0, streams[i]>>>(d_out2[i], d_out3_p1[i], insize3, d_conv2_kernel, ksize3, inchannels3, kchannels3, d_conv2_bias, 0);
-        conv_kernel_p2<<<50, threads3_2, 0, streams[i]>>>(d_out3_p1[i], d_out3_p2[i], kchannels3, inchannels3, insize3 - ksize3 + 1, d_conv2_bias);
-
-        // Pool2
-        maxpool_kernel<<<blocks4, threads4, 0 ,streams[i]>>>(d_out3_p2[i], d_out4[i], insize4, ksize4, stride4, inchannels4);
-
-        // Conv3
-        conv_kernel_p1<<<blocks5, threads5, 0, streams[i]>>>(d_out4[i], d_out5_p1[i], insize5, d_conv3_kernel, ksize5, inchannels5, kchannels5, d_conv3_bias, 0);
-        conv_kernel_p2<<<500, threads5_2, 0, streams[i]>>>(d_out5_p1[i], d_out5_p2[i], kchannels5, inchannels5, insize5 - ksize5 + 1, d_conv3_bias);
-
-        // FC2
-        fc_kernel<<<1, threads6, 0, streams[i]>>>(d_out5_p2[i], d_out6[i], d_fc2_weight, d_fc2_bias, insize6, outsize6);
-    }
-    cudaDeviceSynchronize();
-    // // Probabilities
-    float* maxi_indices = new float[batch];
-    float** out6 = new float*[batch];
-    for(int i = 0; i < batch; i++){
-        out6[i] = new float[10];
-        cudaMemcpy(out6[i], d_out6[i], 10 * sizeof(float), cudaMemcpyDeviceToHost);
-        float *final_out = new float[10];
-        softmax(out6[i], final_out, 10);
-        int max_index = 0;
-        for (int j = 0; j < 10; j++)
-        {
-            if (final_out[j] > final_out[max_index])
+        // // Probabilities
+        float* maxi_indices = new float[num_sub_batches];
+        float** out6 = new float*[num_sub_batches];
+        for(int i = 0; i < num_sub_batches; i++){
+            out6[i] = new float[10];
+            cudaMemcpy(out6[i], d_out6[i], 10 * sizeof(float), cudaMemcpyDeviceToHost);
+            float *final_out = new float[10];
+            softmax(out6[i], final_out, 10);
+            int max_index = 0;
+            for (int k = 0; k < 10; k++)
             {
-                max_index = j;
+                if (final_out[k] > final_out[max_index])
+                {
+                    max_index = k;
+                }
+            }
+            maxi_indices[i] = max_index;
+            if(label[j * num_sub_batches + i] == max_index){
+                count++;
             }
         }
-        maxi_indices[i] = max_index;
-        if(label[i] == max_index){
-            count++;
-        }
-    } 
+    }
+
+
 
 
     auto end = std::chrono::high_resolution_clock::now();
@@ -363,7 +371,7 @@ int main()
     std::cout << "Total Time : " << duration.count() << "\n";
     std::cout << "Accuracy : " << count << " / " << batch << endl;
 
-    for(int i =0; i < batch; i++){
+    for(int i =0; i < num_sub_batches; i++){
         cudaStreamDestroy(streams[i]);
     }
 
