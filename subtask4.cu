@@ -267,6 +267,11 @@ int main()
     int outsize6 = 10;
     dim3 threads6(10);
 
+    float **out_probs = new float *[batch];
+    for(int i = 0; i < batch; i++){
+        out_probs[i] = new float[10];
+    }
+
     // Memory allocation for input and output
     // float *inp = new float[28 * 28];
     float **inp = new float *[batch];
@@ -341,33 +346,39 @@ int main()
         cudaDeviceSynchronize();
 
         // // Probabilities
-        float* maxi_indices = new float[num_sub_batches];
         float** out6 = new float*[num_sub_batches];
         for(int i = 0; i < num_sub_batches; i++){
             out6[i] = new float[10];
             cudaMemcpy(out6[i], d_out6[i], 10 * sizeof(float), cudaMemcpyDeviceToHost);
-            float *final_out = new float[10];
-            softmax(out6[i], final_out, 10);
+            // float *final_out = new float[10];
+            softmax(out6[i], out_probs[j * num_sub_batches + i], 10);
             int max_index = 0;
             for (int k = 0; k < 10; k++)
             {
-                if (final_out[k] > final_out[max_index])
+                if (out_probs[j * num_sub_batches + i][k] > out_probs[j * num_sub_batches + i][max_index])
                 {
                     max_index = k;
                 }
             }
-            maxi_indices[i] = max_index;
+
             if(label[j * num_sub_batches + i] == max_index){
                 count++;
             }
         }
     }
 
-
-
-
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::milliseconds duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - str);
+
+    for(int i=0; i<batch; i++){
+        sort(out_probs[i], out_probs[i] + 10, greater<float>());
+        cout << "Image " << i << " : " << out_probs[i][0] << ", " << out_probs[i][1] << ", " << out_probs[i][2] << ", " << out_probs[i][3] << ", " << out_probs[i][4] << endl;
+    }
+
+    for(int i = 0; i < batch; i++){
+        delete[] out_probs[i];
+    }
+
     std::cout << "Total Time : " << duration.count() << "\n";
     std::cout << "Accuracy : " << count << " / " << batch << endl;
 

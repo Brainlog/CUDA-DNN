@@ -76,3 +76,4 @@ __global__ void fc_kernel(float *inp, float *out, float *weight, float *bias, in
     }
     out[row] = sum + bias[row];
 }
+

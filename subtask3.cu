@@ -248,6 +248,11 @@ int main()
     cudaMalloc(&d_out5_p2, 500 * sizeof(float));
     cudaMalloc(&d_out6, 10 * sizeof(float));
     auto str = std::chrono::high_resolution_clock::now();
+    
+    float **out_probs = new float *[batch];
+    for(int i = 0; i < batch; i++){
+        out_probs[i] = new float[10];
+    }
     // count time
     for (int i = start; i < start + batch; i++)
     {
@@ -327,17 +332,18 @@ int main()
         float *out6 = new float[10];
         cudaMemcpy(out6, d_out6, 10 * sizeof(float), cudaMemcpyDeviceToHost);
 
-        float *final_out = new float[10];
-        softmax(out6, final_out, 10);
+        // float *final_out = new float[10];
+        softmax(out6, out_probs[i], 10);
         int max_index = 0;
+        
         for (int j = 0; j < 10; j++)
         {
-            if (final_out[j] > final_out[max_index])
+            if (out_probs[i][j] > out_probs[i][max_index])
             {
                 max_index = j;
             }
         }
-
+        
         if (label[i] == max_index)
         {
             count++;
@@ -346,6 +352,16 @@ int main()
 
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::milliseconds duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - str);
+
+    for(int i=0; i<batch; i++){
+        sort(out_probs[i], out_probs[i] + 10, greater<float>());
+        cout << "Image " << i << " : " << out_probs[i][0] << ", " << out_probs[i][1] << ", " << out_probs[i][2] << ", " << out_probs[i][3] << ", " << out_probs[i][4] << endl;
+    }
+
+    for(int i = 0; i < batch; i++){
+        delete[] out_probs[i];
+    }
+
     std::cout << "Total Time : " << duration.count() << "\n";
     std::cout << "Accuracy : " << count << " / " << batch << endl;
 
