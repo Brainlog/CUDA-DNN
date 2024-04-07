@@ -1,6 +1,7 @@
 #include <iostream>
 #include <vector>
 #include <cmath>
+#include <fstream> 
 
 using namespace std;
 
@@ -127,60 +128,250 @@ void sigmod_function(float * vector, float * final_vector, int size)
     final_vector[i]=1/(1+exp(-vector[i]));
 }
 
-int main(int argn, char **argv)
-{
-    int mat_size, kernel_size;
-    if (argn != 3)
-    {
-        cerr << "not 2 arguments" << endl;
-    }
-    mat_size = stoi(argv[1]);
-    kernel_size = stoi(argv[2]);
-    int n_final = mat_size;
 
-    float **conv_matrix = (float **)malloc(n_final * sizeof(float *));
-    for (int i = 0; i < n_final; i++)
-        conv_matrix[i] = (float *)malloc(n_final * sizeof(float));
 
-    float **matrix = (float **)malloc(mat_size * sizeof(float *));
-    for (int i = 0; i < mat_size; i++)
-        matrix[i] = (float *)malloc(mat_size * sizeof(float *));
+int main(int argc, char** argv) {
 
-    float **kernel = (float **)malloc(kernel_size * sizeof(float *));
-    for (int i = 0; i < kernel_size; i++)
-        kernel[i] = (float *)malloc(kernel_size * sizeof(float));
+    ofstream outFile;
+    outFile.open("output_subtask_1.txt");
 
-    for (int i = 0; i < mat_size; i++)
-        for (int j = 0; j < mat_size; j++)
-            matrix[i][j] = int((rand() / ((float)RAND_MAX)) * 10);
-
-    for (int i = 0; i < kernel_size; i++)
-        for (int j = 0; j < kernel_size; j++)
-            kernel[i][j] = int((rand() / ((float)RAND_MAX)) * 10);
-
-    cout << "Matrix " << endl;
-    for (int i = 0; i < mat_size; i++)
-    {
-        for (int j = 0; j < mat_size; j++)
-            cout << matrix[i][j] << " ";
-        cout << endl;
+    if (argc < 2) {
+        outFile << "Usage: " << argv[0] << " <mode> [args...]" << endl;
+        outFile.close();
+        return 1;
     }
 
-    cout << "Kernel" << endl;
-    for (int i = 0; i < kernel_size; i++)
-    {
-        for (int j = 0; j < kernel_size; j++)
-            cout << kernel[i][j] << " ";
-        cout << endl;
+    int mode = atoi(argv[1]);
+
+    if (mode == 1) {  // Convolution
+        if (argc < 7) {
+            outFile << "Usage: " << argv[0] << " 1 <input_size> <kernel_size> <input_matrix> <kernel_matrix>" << endl;
+            outFile.close();
+            return 1;
+        }
+
+        int inputSize = atoi(argv[2]);
+        int kernelSize = atoi(argv[3]);
+
+        // Allocate memory for input and kernel matrices
+        float** input = new float*[inputSize];
+        for (int i = 0; i < inputSize; ++i) {
+            input[i] = new float[inputSize];
+        }
+        float** kernel = new float*[kernelSize];
+        for (int i = 0; i < kernelSize; ++i) {
+            kernel[i] = new float[kernelSize];
+        }
+
+        // Initialize input matrix
+        int argIndex = 4;
+        for (int i = 0; i < inputSize; ++i) {
+            for (int j = 0; j < inputSize; ++j) {
+                input[i][j] = atof(argv[argIndex++]);
+            }
+        }
+
+        // Initialize kernel matrix
+        for (int i = 0; i < kernelSize; ++i) {
+            for (int j = 0; j < kernelSize; ++j) {
+                kernel[i][j] = atof(argv[argIndex++]);
+            }
+        }
+
+        // Perform convolution with padding
+        vector<vector<float>> convOutputPadding = convolveWithPadding(input, kernel, inputSize, kernelSize);
+        outFile << "Output with padding:" << endl;
+        for (int i = 0; i < inputSize; ++i) {
+            for (int j = 0; j < inputSize; ++j) {
+                outFile << convOutputPadding[i][j] << " ";
+            }
+            outFile << endl;
+        }
+
+        // Deallocate memory for input and kernel matrices
+        for (int i = 0; i < inputSize; ++i) {
+            delete[] input[i];
+        }
+        delete[] input;
+        for (int i = 0; i < kernelSize; ++i) {
+            delete[] kernel[i];
+        }
+        delete[] kernel;
+
+    } else if (mode == 2) {  // Activation
+        if (argc < 5) {
+            outFile << "Usage: " << argv[0] << " 2 <activation_mode> <matrix_size> <input_matrix>" << endl;
+            outFile.close();
+            return 1;
+        }
+
+        int activationMode = atoi(argv[2]);
+        int matSize = atoi(argv[3]);
+
+        // Allocate memory for input matrix
+        float** input = new float*[matSize];
+        for (int i = 0; i < matSize; ++i) {
+            input[i] = new float[matSize];
+        }
+
+        // Initialize input matrix
+        int argIndex = 4;
+        for (int i = 0; i < matSize; ++i) {
+            for (int j = 0; j < matSize; ++j) {
+                input[i][j] = atof(argv[argIndex++]);
+            }
+        }
+
+        // Apply activation function
+        if (activationMode == 0) {
+            applyReLU(input, matSize);
+        } else {
+            applyTanh(input, matSize);
+        }
+
+        // Print output matrix
+        outFile << "Output after activation:" << endl;
+        for (int i = 0; i < matSize; ++i) {
+            for (int j = 0; j < matSize; ++j) {
+                outFile << input[i][j] << " ";
+            }
+            outFile << endl;
+        }
+
+        // Deallocate memory for input matrix
+        for (int i = 0; i < matSize; ++i) {
+            delete[] input[i];
+        }
+        delete[] input;
+
+    } else if (mode == 3) {  // Subsampling
+        if (argc < 6) {
+            outFile << "Usage: " << argv[0] << " 3 <subsampling_mode> <matrix_size> <final_size> <pool_size> <input_matrix>" << endl;
+            outFile.close();
+            return 1;
+        }
+
+        int subsamplingMode = atoi(argv[2]);
+        int matSize = atoi(argv[3]);
+        int finalSize = atoi(argv[4]);
+        int poolSize = atoi(argv[5]);
+
+        // Allocate memory for input and final matrices
+        float** input = new float*[matSize];
+        for (int i = 0; i < matSize; ++i) {
+            input[i] = new float[matSize];
+        }
+        float** finalMatrix = new float*[finalSize];
+        for (int i = 0; i < finalSize; ++i) {
+            finalMatrix[i] = new float[finalSize];
+        }
+
+        // Initialize input matrix
+        int argIndex = 6;
+        for (int i = 0; i < matSize; ++i) {
+            for (int j = 0; j < matSize; ++j) {
+                input[i][j] = atof(argv[argIndex++]);
+            }
+        }
+
+        // Perform subsampling
+        subsampling(input, finalMatrix, subsamplingMode == 0, matSize, finalSize, poolSize);
+
+        // Print output matrix
+        outFile << "Output after subsampling:" << endl;
+        for (int i = 0; i < finalSize; ++i) {
+            for (int j = 0; j < finalSize; ++j) {
+                outFile << finalMatrix[i][j] << " ";
+            }
+            outFile << endl;
+        }
+
+        // Deallocate memory for input and final matrices
+        for (int i = 0; i < matSize; ++i) {
+            delete[] input[i];
+        }
+        delete[] input;
+        for (int i = 0; i < finalSize; ++i) {
+            delete[] finalMatrix[i];
+        }
+        delete[] finalMatrix;
+
+    } else if (mode == 4) {  // Softmax
+        if (argc < 3) {
+            outFile << "Usage: " << argv[0] << " 4 <vector_size> <input_vector>" << endl;
+            outFile.close();
+            return 1;
+        }
+
+        int size = atoi(argv[2]);
+
+        // Allocate memory for input vector
+        float* input = new float[size];
+
+        // Initialize input vector
+        int argIndex = 3;
+        for (int i = 0; i < size; ++i) {
+            input[i] = atof(argv[argIndex++]);
+        }
+
+        // Allocate memory for output vector
+        float* output = new float[size];
+
+        // Apply softmax function
+        softmax(input, output, size);
+
+        // Print output vector
+        outFile << "Output after softmax function:" << endl;
+        for (int i = 0; i < size; ++i) {
+            outFile << output[i] << " ";
+        }
+        outFile << endl;
+
+        // Deallocate memory for input and output vectors
+        delete[] input;
+        delete[] output;
+
+    } else if (mode == 5) {  // Sigmoid
+        if (argc < 3) {
+            outFile << "Usage: " << argv[0] << " 5 <vector_size> <input_vector>" << endl;
+                        outFile.close();
+            return 1;
+        }
+
+        int size = atoi(argv[2]);
+
+        // Allocate memory for input vector
+        float* input = new float[size];
+
+        // Initialize input vector
+        int argIndex = 3;
+        for (int i = 0; i < size; ++i) {
+            input[i] = atof(argv[argIndex++]);
+        }
+
+        // Allocate memory for output vector
+        float* output = new float[size];
+
+        // Apply sigmoid function
+        sigmod_function(input, output, size);
+
+        // Print output vector
+        outFile << "Output after sigmoid function:" << endl;
+        for (int i = 0; i < size; ++i) {
+            outFile << output[i] << " ";
+        }
+        outFile << endl;
+
+        // Deallocate memory for input and output vectors
+        delete[] input;
+        delete[] output;
+
+    } else {
+        outFile << "Invalid mode" << endl;
     }
 
-    conv(matrix, kernel, conv_matrix, true, mat_size, kernel_size);
+    outFile.close();
 
-    cout << "convolved matrix " << endl;
-    for (int i = 0; i < n_final; i++)
-    {
-        for (int j = 0; j < n_final; j++)
-            cout << conv_matrix[i][j] << " ";
-        cout << endl;
-    }
+    return 0;
 }
+
