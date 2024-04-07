@@ -370,10 +370,15 @@ void process_with_streams()
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::milliseconds duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - str);
 
+    ofstream out_file;
+    out_file.open("output_subtask_4.txt");
+
     for(int i=0; i<batch; i++){
         sort(out_probs[i], out_probs[i] + 10, greater<float>());
-        cout << "Image " << i << " : " << out_probs[i][0] << ", " << out_probs[i][1] << ", " << out_probs[i][2] << ", " << out_probs[i][3] << ", " << out_probs[i][4] << endl;
+        out_file << "Image " << i << " : " << out_probs[i][0] << ", " << out_probs[i][1] << ", " << out_probs[i][2] << ", " << out_probs[i][3] << ", " << out_probs[i][4] << endl;
     }
+
+    out_file.close();
 
     for(int i = 0; i < batch; i++){
         delete[] out_probs[i];
@@ -666,10 +671,15 @@ void process_wo_streams()
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::milliseconds duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - str);
 
+    ofstream out_file;
+    out_file.open("output_subtask_4.txt");
+
     for(int i=0; i<batch; i++){
         sort(out_probs[i], out_probs[i] + 10, greater<float>());
-        cout << "Image " << i << " : " << out_probs[i][0] << ", " << out_probs[i][1] << ", " << out_probs[i][2] << ", " << out_probs[i][3] << ", " << out_probs[i][4] << endl;
+        out_file << "Image " << i << " : " << out_probs[i][0] << ", " << out_probs[i][1] << ", " << out_probs[i][2] << ", " << out_probs[i][3] << ", " << out_probs[i][4] << endl;
     }
+
+    out_file.close();
 
     for(int i = 0; i < batch; i++){
         delete[] out_probs[i];
