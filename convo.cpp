@@ -1,6 +1,7 @@
 #include <iostream>
 #include <vector>
 #include <cmath>
+#include <fstream> 
 
 using namespace std;
 
@@ -160,74 +161,177 @@ void printMatrix(const vector<vector<float>>& matrix) {
     }
 }
 
+int main(int argc, char** argv) {
 
-int main() {
-    // Define input matrix
-    vector<vector<float>> input = {
-        {1.0f, 2.0f, 3.0f, 4.0f},
-        {5.0f, 6.0f, 7.0f, 8.0f},
-        {9.0f, 10.0f, 11.0f, 12.0f},
-        {13.0f, 14.0f, 15.0f, 16.0f}
-    };
+    ofstream outFile;
+    outFile.open("output_subtask_1.txt");
 
-    // Define kernel matrix
-    vector<vector<float>> kernel = {
-        {1.0f, 0.0f, -1.0f},
-        {1.0f, 0.0f, -1.0f},
-        {1.0f, 0.0f, -1.0f}
-    };
-
-    // Perform convolution with padding
-    cout << "Convolution with padding:" << endl;
-    vector<vector<float>> convOutputPadding = convolveWithPadding(input, kernel);
-    printMatrix(convOutputPadding);
-    cout << endl;
-
-    // Perform convolution without padding
-    cout << "Convolution without padding:" << endl;
-    vector<vector<float>> convOutputNoPadding = convolveWithoutPadding(input, kernel);
-    printMatrix(convOutputNoPadding);
-    cout << endl;
-
-    // Apply ReLU activation
-    cout << "ReLU Activation:" << endl;
-    vector<vector<float>> reluOutput = applyReLU(input);
-    printMatrix(reluOutput);
-    cout << endl;
-
-    // Apply tanh activation
-    cout << "Tanh Activation:" << endl;
-    vector<vector<float>> tanhOutput = applyTanh(input);
-    printMatrix(tanhOutput);
-    cout << endl;
-
-    // Perform max pooling
-    cout << "Max Pooling:" << endl;
-    vector<vector<float>> maxPoolOutput = maxPooling(input, 2);
-    printMatrix(maxPoolOutput);
-    cout << endl;
-
-    // Perform average pooling
-    cout << "Average Pooling:" << endl;
-    vector<vector<float>> avgPoolOutput = avgPooling(input, 2);
-    printMatrix(avgPoolOutput);
-    cout << endl;
-
-    // Apply softmax to a vector
-    cout << "Softmax Activation:" << endl;
-    vector<float> softmaxOutput = softmax({1.0f, 2.0f, 3.0f});
-    for (float val : softmaxOutput) {
-        cout << val << " ";
+    if (argc < 2) {
+        outFile << "Usage: " << argv[0] << " <mode> [args...]" << endl;
+        return 1;
     }
-    cout << endl << endl;
 
-    // Apply sigmoid to a vector
-    cout << "Sigmoid Activation:" << endl;
-    vector<float> sigmoidOutput = sigmoid({1.0f, 2.0f, 3.0f});
-    for (float val : sigmoidOutput) {
-        cout << val << " ";
+    int mode = atoi(argv[1]);
+
+    if (mode == 1) {  // Convolution
+        if (argc < 8) {
+            outFile << "Usage: " << argv[0] << " 1 <input_size> <kernel_size> <padding> <input_matrix> <kernel_matrix>" << endl;
+            return 1;
+        }
+
+        int inputSize = atoi(argv[2]);
+        int kernelSize = atoi(argv[3]);
+        int padding = atoi(argv[4]);
+
+        vector<vector<float>> input(inputSize, vector<float>(inputSize));
+        int argIndex = 5;
+        for (int i = 0; i < inputSize; ++i) {
+            for (int j = 0; j < inputSize; ++j) {
+                input[i][j] = strtof(argv[argIndex++], nullptr);
+            }
+        }
+
+        vector<vector<float>> kernel(kernelSize, vector<float>(kernelSize));
+        for (int i = 0; i < kernelSize; ++i) {
+            for (int j = 0; j < kernelSize; ++j) {
+                kernel[i][j] = strtof(argv[argIndex++], nullptr);
+            }
+        }
+
+        vector<vector<float>> convOutputPadding = convolveWithPadding(input, kernel);
+        vector<vector<float>> convOutputNoPadding = convolveWithoutPadding(input, kernel);
+
+
+        outFile << "Output with padding:" << endl;
+        for (const auto& row : convOutputPadding) {
+            for (float val : row) {
+                outFile << val << " ";
+            }
+            outFile << endl;
+        }
+
+        outFile << "Output without padding:" << endl;
+        for (const auto& row : convOutputNoPadding) {
+            for (float val : row) {
+                outFile << val << " ";
+            }
+            outFile << endl;
+        }
+
+    } else if (mode == 2) {  // Activation
+        if (argc < 5) {
+            outFile << "Usage: " << argv[0] << " 2 <activation_mode> <matrix_size> <input_matrix>" << endl;
+            return 1;
+        }
+
+        int activationMode = atoi(argv[2]);
+        int matSize = atoi(argv[3]);
+
+        vector<vector<float>> input(matSize, vector<float>(matSize));
+        int argIndex = 4;
+        for (int i = 0; i < matSize; ++i) {
+            for (int j = 0; j < matSize; ++j) {
+                input[i][j] = strtof(argv[argIndex++], nullptr);
+            }
+        }
+
+        vector<vector<float>> output;
+        if (activationMode == 0) {
+            output = applyReLU(input);
+        } else {
+            output = applyTanh(input);
+        }
+
+        outFile << "Output after activation:" << endl;
+        for (const auto& row : output) {
+            for (float val : row) {
+                outFile << val << " ";
+            }
+            outFile << endl;
+        }
+
+    } else if (mode == 3) {  // Subsampling
+        if (argc < 6) {
+            outFile << "Usage: " << argv[0] << " 3 <subsampling_mode> <matrix_size> <pool_size> <input_matrix>" << endl;
+            return 1;
+        }
+
+        int subsamplingMode = atoi(argv[2]);
+        int matSize = atoi(argv[3]);
+        int poolSize = atoi(argv[4]);
+
+        vector<vector<float>> input(matSize, vector<float>(matSize));
+        int argIndex = 5;
+        for (int i = 0; i < matSize; ++i) {
+            for (int j = 0; j < matSize; ++j) {
+                input[i][j] = strtof(argv[argIndex++], nullptr);
+            }
+        }
+
+        vector<vector<float>> output;
+        if (subsamplingMode == 0) {
+            output = maxPooling(input, poolSize);
+        } else {
+            output = avgPooling(input, poolSize);
+        }
+
+        outFile << "Output after subsampling:" << endl;
+        for (const auto& row : output) {
+            for (float val : row) {
+                outFile << val << " ";
+            }
+            outFile << endl;
+        }
+
+    } else if (mode == 4) {  // Softmax
+        if (argc < 4) {
+            outFile << "Usage: " << argv[0] << " 4 <vector_size> <input_vector>" << endl;
+            return 1;
+        }
+
+        int size = atoi(argv[2]);
+
+        vector<float> input(size);
+        int argIndex = 3;
+        for (int i = 0; i < size; ++i) {
+            input[i] = strtof(argv[argIndex++], nullptr);
+        }
+
+        vector<float> output = softmax(input);
+
+        outFile << "Output after softmax function:" << endl;
+        for (float val : output) {
+            outFile << val << " ";
+        }
+        outFile << endl;
+
+    } else if (mode == 5) {  // Sigmoid
+        if (argc < 4) {
+            outFile << "Usage: " << argv[0] << " 5 <vector_size> <input_vector>" << endl;
+            return 1;
+        }
+
+        int size = atoi(argv[2]);
+
+        vector<float> input(size);
+        int argIndex = 3;
+        for (int i = 0; i < size; ++i) {
+            input[i] = strtof(argv[argIndex++], nullptr);
+        }
+
+        vector<float> output = sigmoid(input);
+
+        outFile << "Output after sigmoid function:" << endl;
+        for (float val : output) {
+            outFile << val << " ";
+        }
+        outFile << endl;
+
+    } else {
+        outFile << "Invalid mode" << endl;
     }
-    cout << endl;
+
+    outFile.close();
 
     return 0;
 }
