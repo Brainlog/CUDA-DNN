@@ -8,7 +8,7 @@ setcuda:
 	conda install cuda -c nvidia/label/cuda-11.8.0
 
 clean: 
-	rm subtask3 subtask4 subtask2
+	rm subtask3 subtask4 subtask2 subtask1
 
 sub2:
 	nvcc -std=c++11 subtask2.cu -o subtask2
