@@ -1,4 +1,4 @@
-# Parallel Programming Inference on CNN LeNet Architecture
+# Parallel Programming Inference on CNN LeNet Architecture using CUDA
 
 ## Installation Instructions on Laptop for running GPU code, Prerequisite: Laptop with NVIDIA GPU Driver:
 
