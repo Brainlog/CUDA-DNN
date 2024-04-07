@@ -14,4 +14,8 @@ sub2:
 	nvcc -std=c++11 subtask2.cu -o subtask2
 	./subtask2 2 1 3 1 2 -1 3 4 5 -10 0 -7
 
+sub1: 
+	g++ subtask1.cpp -o subtask1
+	./subtask1 4 1 3 1 3 2
+
 

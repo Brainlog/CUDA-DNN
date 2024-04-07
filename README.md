@@ -13,12 +13,39 @@ make setcuda
 ```
 
 ## Execution Instructions for Code:
-<!-- 
+
 ### Subtask-1:
 
+Change the configurable parameters in the makefile under `sub2` and run `make sub2`. 
+1. The command will be in the form of:
+ ```
+ ./subtask1 [function-choice: 1=convolution, 2=non-linear-activations, 3=subsampling, 4=converting a vector]
+ ```
+2. For convolution, the command would be changed to the following, where N = size of input matrix, M = size of kernel, P = padding length:
+```
+./subtask1 1 [N] [M] [P] [entries of matrix in row major order space separated] [entries of kernel in row major order space separated]
 ```
 
-``` -->
+
+3. For activation, the command would be changed to the following, where N = size of input matrix: 
+```
+./subtask1 2 [0:relu, 1:tanh] [N] [entries of matrix in row major order space separated]
+``` 
+
+4. For pooling, the command would be changed to the following, where N = size of input matrix, M = size of kernel:
+
+```
+./subtask1 3 [0: maxpool, 1: avgpool] [N] [M] [entries of matrix in row major order space separated]
+```
+
+5. For softmax/sigmoid, the command would be the following, where N is the size of the input vector:
+
+```
+./subtask1 4 [0: sigmoid, 1: softmax] [N] [entries of input vector space separated]
+```
+
+The outputs will be printed in the file `output_subtask_1.txt`
+
 ### Subtask-2:
 Change the configurable parameters in the makefile under `sub2` and run `make sub2`. 
 1. The command will be in the form of:
