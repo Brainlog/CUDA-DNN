@@ -343,7 +343,6 @@ void process_with_streams()
             // FC2
         for (int i = 0; i < num_sub_batches; i++)
             fc_kernel<<<1, threads6, 0, streams[i]>>>(d_out5_p2[i], d_out6[i], d_fc2_weight, d_fc2_bias, insize6, outsize6);
-        cudaDeviceSynchronize();
 
         // // Probabilities
         float** out6 = new float*[num_sub_batches];
