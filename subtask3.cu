@@ -147,7 +147,7 @@ int main()
     {
         conv2 >> conv2_kernel[i];
     }
-    for (int i = 0; i < 20; i++)
+    for (int i = 0; i < 50; i++)
     {
         conv2 >> conv2_bias[i];
     }
@@ -358,7 +358,7 @@ int main()
 
     for(int i=0; i<batch; i++){
         sort(out_probs[i], out_probs[i] + 10, greater<float>());
-        out_file << "Image " << i << " : " << out_probs[i][0] << ", " << out_probs[i][1] << ", " << out_probs[i][2] << ", " << out_probs[i][3] << ", " << out_probs[i][4] << endl;
+        out_file << out_probs[i][0] << ", " << out_probs[i][1] << ", " << out_probs[i][2] << ", " << out_probs[i][3] << ", " << out_probs[i][4] << endl;
     }
 
     out_file.close();
