@@ -147,7 +147,7 @@ void process_with_streams()
     {
         conv2 >> conv2_kernel[i];
     }
-    for (int i = 0; i < 20; i++)
+    for (int i = 0; i < 50; i++)
     {
         conv2 >> conv2_bias[i];
     }
@@ -465,7 +465,7 @@ void process_wo_streams()
     {
         conv2 >> conv2_kernel[i];
     }
-    for (int i = 0; i < 20; i++)
+    for (int i = 0; i < 50; i++)
     {
         conv2 >> conv2_bias[i];
     }
