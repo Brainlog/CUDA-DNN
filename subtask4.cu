@@ -318,10 +318,6 @@ void process_with_streams()
             cudaMemcpyAsync(d_inp[i], inp[j * num_sub_batches + i], 28 * 28 * sizeof(float), cudaMemcpyHostToDevice, streams[i]);
         }
         for(int i = 0; i < num_sub_batches; i++){
-            // Dimensions of all outputs :
-            // Conv1 : 20x24x24, Pool1 : 20x12x12, Conv2 : 50x8x8, Pool2 : 50x4x4, Conv3 : 500, FC2 : 10
-            // Perform Inference
-            // Conv1
             conv_kernel_p1<<<blocks1, threads1, 0, streams[i]>>>(d_inp[i], d_out1_p1[i], insize1, d_conv1_kernel, ksize1, inchannels1, kchannels1, d_conv1_bias, flag1);
         }
         for(int i = 0; i < num_sub_batches; i++){
